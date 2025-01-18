@@ -1,0 +1,199 @@
+<%- include("layout/header") %>
+
+<!-- Main Video Container -->
+<div class="container my-4">
+    <div class="row">
+        <!-- Left Column: Video Player and Information -->
+        <div class="col-md-8">
+            <!-- Video Player -->
+            <div class="video-player mb-4">
+                <video id="videoPlayer" controls autoplay preload="auto" style="width: 100%; height: auto;">
+                    <source src="/<%= video.filePath %>" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                
+            </div>
+
+            <!-- Video Title and Metadata -->
+            <div class="video-info">
+                <h2 class="video-title"><%= video.title.join(', ') %></h2>
+                <p class="text-muted">By <%= video.user.name %> • <span id="viewCount"><%= video.views %></span> views</p>
+                
+                <!-- Foldable Description -->
+                <div>
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#videoDescription">Toggle Description</button>
+                    <div id="videoDescription" class="collapse">
+                        <p><%= video.description.join(', ') %></p>
+                    </div>
+                </div>
+
+                <!-- Tags and Category -->
+                <div class="video-meta mt-3">
+                    <p><strong>Tags:</strong> <%= video.tags.join(', ') %></p>
+                    <p><strong>Category:</strong> <%= video.category.join(', ') %></p>
+                </div>
+
+                <!-- Like/Dislike Buttons -->
+                <div class="mt-3">
+                    <button id="likeBtn" class="btn btn-outline-success" onclick="likeVideo()">👍 <span id="likeCount"><%= video.likers.length %></span></button>
+                    <button id="dislikeBtn" class="btn btn-outline-danger" onclick="dislikeVideo()">👎 <span id="dislikeCount"><%= video.dislikers.length %></span></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Suggested Videos -->
+        <div class="col-md-4">
+            <h4>Suggested Videos</h4>
+            <div class="other-videos">
+                <% videos.forEach(function(otherVideo) { %>
+                    <div class="video-card mb-3">
+                        <a href="/video/<%= otherVideo._id %>">
+                            <img src="/<%= otherVideo.thumbnail %>" alt="<%= otherVideo.title %>" class="img-fluid video-thumbnail">
+                            <h5 class="video-title-small"><%= otherVideo.title.join(', ') %></h5>
+                        </a>
+                    </div>
+                <% }) %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comments Section -->
+    <div class="comments-section mt-5">
+        <h4>Comments</h4>
+        <div id="commentsContainer">
+            <% video.comments.forEach(function(comment) { %>
+                <div class="comment mb-3">
+                    <p><strong><%= comment.user %></strong>: <%= comment.text %></p>
+                </div>
+            <% }) %>
+        </div>
+
+        <!-- Add Comment Form -->
+        <form id="commentForm">
+            <div class="form-group">
+                <textarea id="commentText" class="form-control" rows="3" placeholder="Add a comment..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Post Comment</button>
+        </form>
+    </div>
+</div>
+
+<%- include("layout/footer") %>
+
+<!-- CSS Styles -->
+<style>
+    .video-title {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+
+    .video-description {
+        font-size: 1.1rem;
+        color: #555;
+    }
+
+    .video-meta {
+        font-size: 0.9rem;
+        color: #555;
+    }
+
+    .video-meta p {
+        margin-bottom: 5px;
+    }
+
+    .video-card {
+        display: flex;
+        align-items: center;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 10px;
+        background-color: #fff;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        transition: 0.3s;
+    }
+
+    .video-card:hover {
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .video-thumbnail {
+        width: 120px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-right: 15px;
+    }
+
+    .video-title-small {
+        font-size: 1.1rem;
+        font-weight: bold;
+    }
+
+    .comments-section {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+
+    .comment {
+        padding: 10px;
+        background-color: #fff;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+
+    .form-group textarea {
+        resize: none;
+    }
+</style>
+
+<!-- JavaScript for Interaction -->
+<script>
+
+    // Like video
+    function likeVideo() {
+        fetch(`/video/<%= video._id %>/like`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('likeCount').textContent = data.likes;
+        });
+    }
+
+    // Dislike video
+    function dislikeVideo() {
+        fetch(`/video/<%= video._id %>/dislike`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('dislikeCount').textContent = data.dislikes;
+        });
+    }
+
+    // Add comment functionality
+    document.getElementById('commentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const commentText = document.getElementById('commentText').value;
+        if (commentText.trim() === "") return;
+
+        fetch(`/video/<%= video._id %>/comment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ text: commentText })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const newComment = document.createElement('div');
+            newComment.classList.add('comment');
+            newComment.innerHTML = `<p><strong>${data.user}</strong>: ${data.text}</p>`;
+            document.getElementById('commentsContainer').appendChild(newComment);
+            document.getElementById('commentText').value = ""; // Reset the comment input
+        });
+    });
+</script>
+
